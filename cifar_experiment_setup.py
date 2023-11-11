@@ -61,7 +61,7 @@ def set_up_and_run_training(model,train_loader,val_loader,max_epoch,log_interval
         filename_prefix="best",
         score_function=score_function,
         score_name="loss",
-        global_step_transform=global_step_from_engine(trainer),
+        global_step_transform=global_step_from_engine(main_trainer),
     )
     
     val_evaluator.add_event_handler(Events.COMPLETED, model_checkpoint, {"model": model})
@@ -70,6 +70,8 @@ def set_up_and_run_training(model,train_loader,val_loader,max_epoch,log_interval
 
     return logs
 
+def dummy_event_test():
+    help(Events.COMPLETED)
     
         
         
