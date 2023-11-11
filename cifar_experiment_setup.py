@@ -8,7 +8,7 @@ from ignite.handlers import ModelCheckpoint
 from ignite.contrib.handlers import global_step_from_engine
 
 
-def set_up_and_run_training(model,train_loader,val_loader,max_epoch,log_interval=50,device=None,):
+def set_up_and_run_training(model,run_prefix,train_loader,val_loader,max_epoch,log_interval=50,device=None,):
 
     if not device in ('cuda','cpu'):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -58,7 +58,7 @@ def set_up_and_run_training(model,train_loader,val_loader,max_epoch,log_interval
     model_checkpoint = ModelCheckpoint(
         "checkpoint",
         n_saved=1,
-        filename_prefix="best",
+        filename_prefix=run_prefix,
         score_function=score_function,
         score_name="loss",
         global_step_transform=global_step_from_engine(main_trainer),
