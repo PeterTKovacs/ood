@@ -61,6 +61,7 @@ def set_up_and_run_training(model,run_prefix,train_loader,val_loader,max_epoch,l
         filename_prefix=run_prefix,
         score_function=score_function,
         score_name="loss",
+        require_empty=False,
         global_step_transform=global_step_from_engine(main_trainer),
     )
     
