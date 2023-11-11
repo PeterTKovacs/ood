@@ -15,7 +15,7 @@ def set_up_and_run_training(model,train_loader,val_loader,max_epoch,log_interval
 
     logs={"train_iter":list(),
           "train_epoch":list(),
-          "vaild_epoch":list(),}
+          "valid_epoch":list(),}
     
     model=model.to(device)
 
