@@ -52,7 +52,7 @@ def set_up_and_run_training(model,run_prefix,train_loader,val_loader,max_epoch,e
 
 
     def score_function(engine):
-        return engine.state.metrics["loss"]
+        return engine.state.metrics["loss"]*-1
 
 
     model_checkpoint = ModelCheckpoint(
@@ -65,7 +65,7 @@ def set_up_and_run_training(model,run_prefix,train_loader,val_loader,max_epoch,e
         global_step_transform=global_step_from_engine(main_trainer),
     )
 
-    es_handler = EarlyStopping(patience=earlystoping_patience, score_function=lambda x: -1*score_function(x), trainer=main_trainer,
+    es_handler = EarlyStopping(patience=earlystoping_patience, score_function=score_function, trainer=main_trainer,
                                min_delta=min_delta,cumulative_delta=cumulative_delta)
     
     # Note: the handler is attached to an *Evaluator* (runs one epoch on validation dataset).
