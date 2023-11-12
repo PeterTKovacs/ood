@@ -8,7 +8,7 @@ from ignite.handlers import ModelCheckpoint, EarlyStopping
 from ignite.contrib.handlers import global_step_from_engine
 
 
-def set_up_and_run_training(model,run_prefix,train_loader,val_loader,max_epoch,earlystoping_patience,log_interval=50,device=None,):
+def set_up_and_run_training(model,run_prefix,train_loader,val_loader,max_epoch,earlystoping_patience,min_delta,cumulative_delta,log_interval=50,device=None,):
 
     if not device in ('cuda','cpu'):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -65,7 +65,8 @@ def set_up_and_run_training(model,run_prefix,train_loader,val_loader,max_epoch,e
         global_step_transform=global_step_from_engine(main_trainer),
     )
 
-    es_handler = EarlyStopping(patience=earlystoping_patience, score_function=lambda x: -1*score_function(x), trainer=main_trainer)
+    es_handler = EarlyStopping(patience=earlystoping_patience, score_function=lambda x: -1*score_function(x), trainer=main_trainer,
+                               min_delta=min_delta,cumulative_delta=cumulative_delta)
     
     # Note: the handler is attached to an *Evaluator* (runs one epoch on validation dataset).
     val_evaluator.add_event_handler(Events.COMPLETED, es_handler)
