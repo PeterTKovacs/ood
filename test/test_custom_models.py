@@ -1,4 +1,4 @@
-from models.custom_models import IgniteModel
+from models.custom_models import IgniteModel, ManualModel
 from models.mcnn import make_cnn
 from models.resnet18k import make_resnet18k
 import itertools
@@ -49,16 +49,29 @@ def test_init_resnet(c,n_class,ch):
 
     assert out.shape==(5,n_class)
 
-test_cases_loss=[(make_cnn,2,1),(make_resnet18k,2,1),(make_cnn,10,10),(make_resnet18k,2,10)]
+test_cases_loss=[(make_cnn,2,1),(make_resnet18k,2,1),(make_cnn,10,10),(make_resnet18k,2,10),(make_cnn,2,15)]
 
-# @pytest.mark.parametrize('model_fun,n_class,n_batch',test_cases_loss)
-# def test_trainstep(model_fun,n_class,n_batch):
-#     model=IgniteModel(model_fun,1e-4,nn.CrossEntropyLoss(reduction='none'),10,n_class,3)
-#     x,y=generate_mock_batch(n_batch,n_class,3)
-#     y_hat=model(x)
+@pytest.mark.parametrize('model_fun,n_class,n_batch',test_cases_loss)
+def test_scalar_loss(model_fun,n_class,n_batch):
+    model=ManualModel(model_fun,1e-4,nn.CrossEntropyLoss(reduction='none'),10,n_class,3)
+    x,y=generate_mock_batch(n_batch,n_class,3)
+    y_hat=model(x)
 
-#     sum_loss=0
-#     for i in range(n_batch):
-#         sum_loss+=supposed_loss(y_hat[i],y[i])
+    sum_loss=0
+    for i in range(n_batch):
+        sum_loss+=supposed_loss(y_hat[i],y[i])
     
-#     assert loss_equal(sum_loss/n_batch,model.training_step((x,y)))<1e-3
+    assert loss_equal(sum_loss/n_batch,model.get_scalar_loss((x,y)))<1e-3
+
+@pytest.mark.parametrize('model_fun,n_class,n_batch',test_cases_loss)
+def test_standalone_loss(model_fun,n_class,n_batch):
+    model=ManualModel(model_fun,1e-4,nn.CrossEntropyLoss(reduction='none'),10,n_class,3)
+    x,y=generate_mock_batch(n_batch,n_class,3)
+    y_hat=model(x)
+
+    yraw=model.valid_loss_standalone((x,y))
+
+    for i in range(n_batch):
+        assert loss_equal(supposed_loss(y_hat[i],y[i]),yraw[i])
+
+
