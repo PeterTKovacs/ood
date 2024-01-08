@@ -1,4 +1,4 @@
-from models.custom_models import train_step, valid_step
+from ood.models.custom_models import train_step, valid_step
 from torch.utils.data import DataLoader
 import torch
 
