@@ -8,7 +8,9 @@ from ignite.handlers import ModelCheckpoint, EarlyStopping
 from ignite.contrib.handlers import global_step_from_engine
 
 
-def set_up_and_run_training(model,run_prefix,train_loader,val_loader,max_epoch,earlystoping_patience,min_delta,cumulative_delta,log_interval=50,device=None,):
+def set_up_and_run_training(model,run_prefix,train_loader,val_loader,
+                            max_epoch,earlystoping_patience,min_delta,cumulative_delta,
+                            log_interval=50,checkpoint_path='.',device=None,):
 
     if not device in ('cuda','cpu'):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -56,7 +58,7 @@ def set_up_and_run_training(model,run_prefix,train_loader,val_loader,max_epoch,e
 
 
     model_checkpoint = ModelCheckpoint(
-        "checkpoint",
+        checkpoint_path,
         n_saved=1,
         filename_prefix=run_prefix,
         score_function=score_function,
