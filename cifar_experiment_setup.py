@@ -46,8 +46,8 @@ class ExperimentManager():
         logs=set_up_and_run_training(
             model=model,
             run_prefix=model_label,
-            train_loader=trainset.to_dloader(batch_size=128, shuffle=True),
-            val_loader=self.set_validset.to_dloader(batch_size=128, shuffle=True),
+            train_loader=self.trainset.to_dloader(batch_size=128, shuffle=True),
+            val_loader=self.validset.to_dloader(batch_size=128, shuffle=True),
             max_epoch=self.train_hyperpms["max_epoch"],
             earlystoping_patience=self.train_hyperpms["es_patience"],
             min_delta=self.train_hyperpms["min_delta"],
