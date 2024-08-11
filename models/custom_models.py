@@ -7,6 +7,7 @@ class IgniteModel(nn.Module):
         self.model=model_class(c,n_class,ch)
         self.loss=loss
         self.lr=lr
+        self.c=c
     #    self.save_hyperparameters(ignore=['loss'])
         
     def forward(self,xbatch):

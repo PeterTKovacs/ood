@@ -1,11 +1,78 @@
 # basically copied and amended the Ignite tutorial to set up the basic experiment
 
+import json
+import os
+import pickle
+import shutil
 import torch
 
 from ignite.engine import create_supervised_trainer, create_supervised_evaluator, Events
 from ignite.metrics import Loss
 from ignite.handlers import ModelCheckpoint, EarlyStopping
 from ignite.contrib.handlers import global_step_from_engine
+
+class ExperimentManager():
+    def __init__(self, base_path:str, description=None, ds_code=None) -> None:
+        self.base_path=base_path
+        self.experiments=[]
+        self.description=description
+        self.ds_code=ds_code
+
+    def set_trainset(self, trainset):
+        self.trainset=trainset
+    def set_validset(self,validset):
+        self.validset=validset
+    def set_evalset(self, evalset):
+        self.evalset(evalset)
+    def set_train_hyperpms(self, lrate, max_epoch, es_patience, min_delta, cumulative_delta):
+        self.train_hyperpms={
+            "lrate":lrate,
+            "max_epoch": max_epoch,
+            "es_patience":es_patience,
+            "min_delta":min_delta,
+            "cumulative_delta":cumulative_delta
+        }
+    def run_training_random_ds(self,model,model_label, trainset_size,  split_seed,device=None):
+        trainset=self.trainset.split_random(trainset_size, split_seed)
+        dirpath=os.path.join(self.base_path,model_label)
+
+        try:
+            shutil.rmtree(dirpath)
+        except:
+            pass
+        os.mkdir(dirpath)
+
+
+        logs=set_up_and_run_training(
+            model=model,
+            run_prefix=model_label,
+            train_loader=trainset.to_dloader(batch_size=128, shuffle=True),
+            val_loader=self.set_validset.to_dloader(batch_size=128, shuffle=True),
+            max_epoch=self.train_hyperpms["max_epoch"],
+            earlystoping_patience=self.train_hyperpms["es_patience"],
+            min_delta=self.train_hyperpms["min_delta"],
+            cumulative_delta=self.train_hyperpms["cumulative_delta"],
+            checkpoint_path=dirpath,
+            device=device
+            )
+        with open(os.path.join(dirpath,"logs.json"),"w") as f:
+            json.dump(logs,f)
+        with open(os.path.join(dirpath,"hyperparameters.json"),"w") as f:
+            json.dump({"c":model.c,
+                          "lr":model.lr,
+                        "seed_train": split_seed,}.update(self.train_hyperpms)
+                      ,f)
+            
+        self.experiments.append(model_label)
+
+    def save_experiment(self):
+        with open(os.path.join(self.base_path,"shared_hyperpm.json"),"w") as f:
+            json.dump(self.train_hyperpms, f)
+        with open(os.path.join(self.base_path,"suite_description.json"),"w") as f:
+            json.dump({"description": self.description,
+                       "dataset_code": self.ds_code,
+                       "finished_experiments": self.experiments}, f)
+
 
 
 def set_up_and_run_training(model,run_prefix,train_loader,val_loader,
