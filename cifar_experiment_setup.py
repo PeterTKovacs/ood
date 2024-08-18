@@ -4,8 +4,8 @@ import json
 from typing import List, Callable
 import os
 import shutil
-from models.custom_models import IgniteModel
-from models.mcnn import make_cnn
+from . import IgniteModel
+from . import make_cnn
 import torch
 
 from ignite.engine import create_supervised_trainer, create_supervised_evaluator, Events
