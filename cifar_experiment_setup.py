@@ -4,6 +4,8 @@ import json
 import os
 import pickle
 import shutil
+from models.custom_models import IgniteModel
+from models.mcnn import make_cnn
 import torch
 
 from ignite.engine import create_supervised_trainer, create_supervised_evaluator, Events
@@ -12,11 +14,13 @@ from ignite.handlers import ModelCheckpoint, EarlyStopping
 from ignite.contrib.handlers import global_step_from_engine
 
 class ExperimentManager():
-    def __init__(self, base_path:str, description=None, ds_code=None) -> None:
+    def __init__(self, base_path:str, model_factory: function, model_factory_label:str, description=None, ds_code=None, ) -> None:
         self.base_path=base_path
         self.experiments=[]
         self.description=description
         self.ds_code=ds_code
+        self.model_factory=model_factory
+        self.model_factory_label=model_factory_label
 
     def set_trainset(self, trainset):
         self.trainset=trainset
@@ -32,7 +36,7 @@ class ExperimentManager():
             "min_delta":min_delta,
             "cumulative_delta":cumulative_delta
         }
-    def run_training_random_ds(self,model,model_label, trainset_size,  split_seed,device=None):
+    def run_training_random_ds(self,model_kwargs,model_label, trainset_size,  split_seed,device=None):
         trainset=self.trainset.split_random(trainset_size, split_seed)
         dirpath=os.path.join(self.base_path,model_label)
 
@@ -42,6 +46,8 @@ class ExperimentManager():
             pass
         os.mkdir(dirpath)
 
+        model=self.model_factory(**model_kwargs)
+        model.lr=self.train_hyperpms["lrate"]
 
         logs=set_up_and_run_training(
             model=model,
@@ -56,23 +62,73 @@ class ExperimentManager():
             device=device
             )
         with open(os.path.join(dirpath,"logs.json"),"w") as f:
-            json.dump(logs,f)
+            json.dump(logs,f,ensure_ascii=False)
         with open(os.path.join(dirpath,"hyperparameters.json"),"w") as f:
-            json.dump({"c":model.c,
-                          "lr":model.lr,
-                        "seed_train": split_seed,}.update(self.train_hyperpms)
-                      ,f)
+            json.dump({"model_kwargs": model_kwargs,
+                       "seed_train": split_seed,}
+                      ,f, ensure_ascii=False)
             
         self.experiments.append(model_label)
 
     def save_experiment(self):
         with open(os.path.join(self.base_path,"shared_hyperpm.json"),"w") as f:
-            json.dump(self.train_hyperpms, f)
+            json.dump(self.train_hyperpms, f, ensure_ascii=False)
         with open(os.path.join(self.base_path,"suite_description.json"),"w") as f:
             json.dump({"description": self.description,
                        "dataset_code": self.ds_code,
-                       "finished_experiments": self.experiments}, f)
+                       "model_factory": self.model_factory_label,
+                       "finished_experiments": self.experiments}, f, ensure_ascii=False)
 
+class EvaluationManager():
+    def __init__(self, suite_root_path: str, model_factory: function) -> None:
+
+        """
+        ensure that model factory is the same that was used to produce the experimental data
+        """
+
+        self.root_path=suite_root_path
+        with open(os.path.join(suite_root_path, "shared_hyperpm.json"),"r") as f:
+            self.shared_hyperpms=json.load(f)
+        with open(os.path.join(suite_root_path, "suite_description.json"),"r") as f:
+            self.description=json.load(f)
+
+        self.model_factory=model_factory
+        self.model_hyperparameters={}
+
+    def load_models(self, model_label_list: list[str]):
+        models={}
+        for label in model_label_list:
+            if label not in self.description["finished_experiments"]:
+                raise ValueError("missing model")
+            model_root_path=os.path.join(self.root_path, label)
+
+            with open(os.path.join(model_root_path,"hyperparameters.json"),"r") as f:
+                self.model_hyperparameters[label]=json.load(f)
+
+            _model=self.model_factory(**self.model_hyperparameters[label]["model_kwargs"])
+            
+            dir_contents=os.listdir(model_root_path)
+            _checkpoint=[f for f in dir_contents if f[-3:]==".pt"][0]
+            checkpoint=os.path.join(model_root_path, _checkpoint)     
+            checkpoint = torch.load(checkpoint)
+            _model.load_state_dict(checkpoint)
+
+            models[label]=_model
+
+
+            
+
+def cifar10_cnn_factory(c: int, lr:float = 1e-4):
+    return IgniteModel(make_cnn,lr,torch.nn.CrossEntropyLoss(reduction="none"),c=c)
+
+def predict_for_model_batch(models: list[IgniteModel], x:torch.Tensor, device="cpu"):
+    x_dev=x.to(device=device)
+    for m in models:
+        m.to(device=device)
+        m.eval()
+    y=[m(x_dev) for m in models]
+
+    return torch.stack(y, dim=0)
 
 
 def set_up_and_run_training(model,run_prefix,train_loader,val_loader,
