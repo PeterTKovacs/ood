@@ -1,8 +1,8 @@
 # basically copied and amended the Ignite tutorial to set up the basic experiment
 
 import json
+from typing import List, Callable
 import os
-import pickle
 import shutil
 from models.custom_models import IgniteModel
 from models.mcnn import make_cnn
@@ -14,7 +14,7 @@ from ignite.handlers import ModelCheckpoint, EarlyStopping
 from ignite.contrib.handlers import global_step_from_engine
 
 class ExperimentManager():
-    def __init__(self, base_path:str, model_factory: function, model_factory_label:str, description=None, ds_code=None, ) -> None:
+    def __init__(self, base_path:str, model_factory: Callable, model_factory_label:str, description=None, ds_code=None, ) -> None:
         self.base_path=base_path
         self.experiments=[]
         self.description=description
@@ -45,6 +45,8 @@ class ExperimentManager():
         except:
             pass
         os.mkdir(dirpath)
+
+        model_kwargs.update({"lr":self.train_hyperpms["lrate"]})
 
         model=self.model_factory(**model_kwargs)
         model.lr=self.train_hyperpms["lrate"]
@@ -80,7 +82,7 @@ class ExperimentManager():
                        "finished_experiments": self.experiments}, f, ensure_ascii=False)
 
 class EvaluationManager():
-    def __init__(self, suite_root_path: str, model_factory: function) -> None:
+    def __init__(self, suite_root_path: str, model_factory: Callable) -> None:
 
         """
         ensure that model factory is the same that was used to produce the experimental data
@@ -95,7 +97,7 @@ class EvaluationManager():
         self.model_factory=model_factory
         self.model_hyperparameters={}
 
-    def load_models(self, model_label_list: list[str]):
+    def load_models(self, model_label_list: List[str]):
         models={}
         for label in model_label_list:
             if label not in self.description["finished_experiments"]:
@@ -114,6 +116,8 @@ class EvaluationManager():
             _model.load_state_dict(checkpoint)
 
             models[label]=_model
+        
+        return models
 
 
             
@@ -121,7 +125,7 @@ class EvaluationManager():
 def cifar10_cnn_factory(c: int, lr:float = 1e-4):
     return IgniteModel(make_cnn,lr,torch.nn.CrossEntropyLoss(reduction="none"),c=c)
 
-def predict_for_model_batch(models: list[IgniteModel], x:torch.Tensor, device="cpu"):
+def predict_for_model_batch(models: List[IgniteModel], x:torch.Tensor, device="cpu"):
     x_dev=x.to(device=device)
     for m in models:
         m.to(device=device)
