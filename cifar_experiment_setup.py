@@ -6,6 +6,7 @@ import os
 import shutil
 from custom_models import IgniteModel
 from mcnn import make_cnn
+from resnet18k import make_resnet18k
 import torch
 
 from ignite.engine import create_supervised_trainer, create_supervised_evaluator, Events
@@ -124,6 +125,9 @@ class EvaluationManager():
 
 def cifar10_cnn_factory(c: int, lr:float = 1e-4):
     return IgniteModel(make_cnn,lr,torch.nn.CrossEntropyLoss(reduction="none"),c=c)
+
+def cifar100_resnet_factory(c: int, lr: float=1e-4):
+    return IgniteModel(make_resnet18k,lr,torch.nn.CrossEntropyLoss(reduction="none"),c=c, n_class=100)
 
 def predict_for_model_batch(models: List[IgniteModel], x:torch.Tensor, device="cpu"):
     x_dev=x.to(device=device)
